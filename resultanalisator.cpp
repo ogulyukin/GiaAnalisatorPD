@@ -137,7 +137,15 @@ void ResultAnalisator::fillGisResult()
 {
     for (auto it = gisResults.begin(); it != gisResults.end(); it++)
     {
-        it.value()->adress = accountAdresses.value(it.key());
+        if(it.key().endsWith("KP"))
+        {
+            QString temp = it.key();
+            temp.remove(temp.length()-2, 2);
+            it.value()->adress = accountAdresses.value(temp);
+        }else
+        {
+            it.value()->adress = accountAdresses.value(it.key());
+        }
     }
 }
 

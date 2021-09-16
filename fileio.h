@@ -18,7 +18,10 @@ public:
     static bool loadAccounts(QHash<QString, QString>* accountNumbers, QHash<QString, QString>* accountAdresses, QString filename);
     static bool loadGis(QHash<QString, QString>* accountNumbers, QMap<QString, ReportString*>* gisResults, QString& period, QString filename, int& emptyStr);
     static bool saveResult(QMap<QString, ReportString*>* gisResults, QString& period, QString resultPath, QString organisation, int& emptyStr);
+
+private:
     static void fillRowsOnError(ReportString* rstr, QString numberPD, QMultiHash<QString, detailsStr*> *details);
+    static QString findNumber(QHash<QString, QString>* accountNumbers, QString zkhNumber);
 
 signals:
 };

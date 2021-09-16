@@ -76,28 +76,46 @@ bool fileIO::loadGis(QHash<QString, QString>* accountNumbers, QMap<QString, Repo
     }
     doc.selectSheet("Разделы 1-2");
     resColumn = 0;
-    for (int i = 20; i < 50; i++)
+    int krColumn = 0;
+    for (int i = 17; i < 50; i++)
     {
         if(doc.read(1, i ).toString() == "Статус обработки")
         {
             resColumn = i;
             i = 100;
         }
+        if(doc.read(2, i ).toString() == "Размер взноса на кв.м, руб.")
+        {
+            krColumn = i;
+        }
     }
     qDebug() << "Определение колонки с результатом: " << resColumn;
+    qDebug() << "Определение колонки с капремондом: " << krColumn;
     xCount = 4;
     QString numberAcc = doc.read(xCount,1).toString();
     QString status = doc.read(xCount, resColumn).toString();
     period = doc.read(xCount, 4).toString();
     QString numberPD = doc.read(xCount, 3).toString();
+    QString isKR = doc.read(xCount, krColumn).toString();
     while(numberPD != "")
     {
         if(numberAcc != "")
         {
-            ReportString *rstr = new ReportString(numberAcc, status);
-            if(status != "OK")
-                fillRowsOnError(rstr, numberPD, &details);
-            gisResults->insert(accountNumbers->key(numberAcc), rstr);
+            if(isKR == "")
+            {
+                ReportString *rstr = new ReportString(numberAcc, status);
+                if(status != "OK")
+                    fillRowsOnError(rstr, numberPD, &details);
+                gisResults->insert(accountNumbers->key(numberAcc), rstr);
+            }else
+            {
+                QString tempNumber = findNumber(accountNumbers, numberAcc);
+                if(tempNumber != "")
+                {
+                    ReportString *rstr = new ReportString(numberAcc, status);
+                    gisResults->insert((tempNumber + "KP"), rstr);
+                }
+            }
         }else
         {
             emptyStr++;
@@ -106,12 +124,30 @@ bool fileIO::loadGis(QHash<QString, QString>* accountNumbers, QMap<QString, Repo
         numberAcc = doc.read(xCount,1).toString();
         status = doc.read(xCount, resColumn).toString();
         numberPD = doc.read(xCount, 3).toString();
-        qDebug() << "Загрузка данных ГИС: " << numberAcc << " " << status;
+        isKR = doc.read(xCount, krColumn).toString();
+        //qDebug() << "Загрузка данных ГИС: " << numberAcc << " " << status;
     }
     qDebug() << "ЛС без кодов ЕЛС: " << emptyStr;
     if(gisResults->size() > 0 )
         return true;
     return false;
+}
+
+
+QString fileIO::findNumber(QHash<QString, QString> *accountNumbers, QString zkhNumber)
+{
+    int pos = zkhNumber.lastIndexOf("-");
+    zkhNumber = zkhNumber.remove(pos, 3);
+    //qDebug() << "Get KR account: " << zkhNumber;
+    for (auto it = accountNumbers->begin(); it != accountNumbers->end(); it++)
+    {
+        if(it.value().contains(zkhNumber))
+        {
+            //qDebug() << "Get KR account: " << (it.key() + "KP");
+            return (it.key());
+        }
+    }
+    return "";
 }
 
 
@@ -168,7 +204,7 @@ bool fileIO::saveResult(QMap<QString, ReportString*>* gisResults, QString& perio
         QXlsx::RichString mStrRep;
         mStrRep.addFragment(it.value()->status, fontFormat);
         doc.write(rowCounter, 4, mStrRep);
-        qDebug() << rowCounter << ". Записываю: " << it.key() << " " << it.value()->status;
+        //qDebug() << rowCounter << ". Записываю: " << it.key() << " " << it.value()->status;
         for(auto it2 = it.value()->rows.begin(); it2 != it.value()->rows.end();it2++)
         {
             fontFormat.setFontItalic(true);
@@ -180,10 +216,10 @@ bool fileIO::saveResult(QMap<QString, ReportString*>* gisResults, QString& perio
             mStrDet1.addFragment(it2->service, fontFormat);
             mStrDet2.addFragment(it2->ammount, fontFormat);
             mStrDet3.addFragment(it2->status, fontFormat);
-            doc.write(rowCounter, 1, mStrDet1);
             doc.write(rowCounter, 2, mStrDet2);
+            doc.write(rowCounter, 3, mStrDet1);
             doc.write(rowCounter, 4, mStrDet3);
-            qDebug() << rowCounter << ". Записываю деталировку: " << it2->service << " " << it2->status;
+            //qDebug() << rowCounter << ". Записываю деталировку: " << it2->service << " " << it2->status;
         }
         rowCounter++;
         //qDebug() << "В процессе: " << rowCounter;
